@@ -1,292 +1,43 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/olivere/elastic/v7"
-	irc "github.com/thoj/go-ircevent"
+	"github.com/djdduty/ttv-logbot/irc"
 )
 
-//Message ...
-type Message struct {
-	User      string
-	Message   string
-	Channel   string
-	Timestamp time.Time
-}
+func main() {
+	sigs := make(chan os.Signal, 1)
 
-const mapping = `
-{
-	"settings":{
-		"number_of_shards": 1,
-		"number_of_replicas": 0
-	},
-	"mappings":{
-		"message":{
-			"properties":{
-				"User":{
-					"type":"keyword"
-				},
-				"Message":{
-					"type":"text",
-					"store": true,
-					"fielddata": true
-				},
-				"Channel":{
-					"type":"text"
-				},
-				"Timestamp":{
-					"type":"date"
-				}
-			}
-		}
+	//signal.Notify registers the given channel to receive notifications of the specified signals.
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	messageChan, quitChan, err := irc.CreateElasticFlusher(
+		"http://127.0.0.1:9200", // elasticsearch host
+		1*time.Second,           // elasticsearch flush interval
+	)
+
+	if err != nil {
+		panic(err)
 	}
-}`
-
-var streamers = []string{
-	"shroud",
-	"xqcow",
-	"moonmoon_ow",
-	"scarra",
-	"lord_kebun",
-	"fextralife",
-	"alanzoka",
-	"kitboga",
-	"p10e",
-	"aydan",
-	"nl_kripp",
-	"brookeab",
-	"gronkh",
-	"mizkif",
-	"elded",
-	"aspectfn",
-	"thedarkness",
-	"cdnthe3rd",
-	"ness",
-	"vinesauce",
-	"riotgames",
-	"dasmehdi",
-	"surefour",
-	"zilioner",
-	"lospollostv",
-	"mym_alkapone",
-	"calebhart42",
-	"overwatchleague",
-	"corinnakopf",
-	"uberhaxornova",
-	"jinsooo0",
-	"corinnakopf",
-	"overwatchleague",
-	"nairomk",
-	"skipnho",
-	"calebhart42",
-	"masondota2",
-	"robomaster",
-	"aspectfn",
-	"mandiocaa1",
-	"rhdgurwns",
-	"chocotaco",
-	"illidanstr",
-	"kinggeorge",
-	"kingrichard",
-	"problemwright",
-	"hasanabi",
-	"never_loses",
-	"moistcr1tikal",
-	"nanayango3o",
-	"mrfreshasian",
-	"iamcristinini",
-	"goldglove",
-	"rakanoolive",
-	"symfuhny",
-	"ratedepicz",
-	"arigameplays",
-	"trick2g",
-	"ma_mwa",
-	"goldglove",
-	"arigameplays",
-	"trick2g",
-	"kyo1984123",
-	"ma_mwa",
-	"wingsofdeath",
-	"cyr",
-	"aurateur",
-	"strippin",
-	"bebelolz",
-	"sardoche",
-	"penta",
-	"asmodaitv",
-	"dellor",
-	"lilypichu",
-	"purgegamers",
-	"jdotb",
-	"bikeman",
-	"amouranth",
-	"vargskelethor",
-	"donutoperator",
-	"ashlynn",
-	"trihex",
-	"karasmai",
-	"shotz",
-	"yamatonjp",
-	"calebdmtg",
-	"juanjuegajuegos",
-	"grimmmz",
-	"tanovich",
-	"juanjuegajuegos",
-	"grimmmz",
-	"calebdmtg",
-	"gaules",
-	"uzra",
-	"peachsaliva",
-	"tanovich",
-	"emongg",
-	"jennajulien",
-	"gladd",
-	"spaceboy",
-	"bazzagazza",
-	"cdewx",
-	"mch_agg",
-	"gabepeixe",
-	"ratirl",
-	"datmodz",
-	"formal",
-	"jltomy",
-	"burkeblack",
-	"chicalive",
-	"nicewigg",
-	"immortalhd",
-	"quarterjade",
-	"heelmike",
-	"zrush",
-	"pangaeapanga",
-	"livekiss",
-	"protonjon",
-	"shrimp9710",
-	"paymoneywubby",
-	"djdduty",
-	"maiyadanny",
-}
-
-func schedule(what func(), delay time.Duration) chan bool {
-	stop := make(chan bool)
 
 	go func() {
-		for {
-			what()
-			select {
-			case <-time.After(delay):
-			case <-stop:
-				return
-			}
-		}
+		sig := <-sigs
+		fmt.Println()
+		fmt.Println(sig)
+		quitChan <- true
 	}()
 
-	return stop
-}
+	go irc.StartGoIRC(
+		messageChan,               // channel for IRC to feed messages in to
+		quitChan,                  // chanel for done signal or disconnect
+		os.Getenv("TTV_USERNAME"), // twitch IRC username
+		os.Getenv("TTV_PASSWORD"), // twitch IRC password "oauth:..."
+	)
 
-func main() {
-	ctx := context.Background()
-	client, err := elastic.NewClient()
-	if err != nil {
-		panic(err)
-	}
-
-	info, code, err := client.Ping("http://127.0.0.1:9200").Do(ctx)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("Elasticsearch returned with code %d and version %s\n", code, info.Version.Number)
-
-	// Getting the ES version number is quite common, so there's a shortcut
-	esversion, err := client.ElasticsearchVersion("http://127.0.0.1:9200")
-	if err != nil {
-		// Handle error
-		panic(err)
-	}
-	fmt.Printf("Elasticsearch version %s\n", esversion)
-
-	/*/ Delete an index.
-	deleteIndex, err := client.DeleteIndex("twitch").Do(ctx)
-	if err != nil {
-		// Handle error
-		panic(err)
-	}
-	if !deleteIndex.Acknowledged {
-		// Not acknowledged
-	}*/
-
-	// Use the IndexExists service to check if a specified index exists.
-	exists, err := client.IndexExists("twitch").Do(ctx)
-	if err != nil {
-		// Handle error
-		panic(err)
-	}
-	if !exists {
-		// Create a new index.
-		createIndex, err := client.CreateIndex("twitch").BodyString(mapping).Do(ctx)
-		if err != nil {
-			// Handle error
-			panic(err)
-		}
-		if !createIndex.Acknowledged {
-			// Not acknowledged
-		}
-	}
-
-	username := os.Getenv("TTV_USERNAME")
-	con := irc.IRC(username, username)
-	con.Password = os.Getenv("TTV_PASSWORD")
-	err = con.Connect("irc.chat.twitch.tv:6667")
-
-	if err != nil {
-		fmt.Println("Failed connecting")
-		return
-	}
-
-	con.AddCallback("001", func(e *irc.Event) {
-		numJoined := 0
-		for _, streamName := range streamers {
-			con.Join(fmt.Sprintf("#%s", streamName))
-			numJoined = numJoined + 1
-			fmt.Printf("Sent choin for stream chat for %s\n", streamName)
-			// Abide by join rate limit
-			if numJoined >= 50 {
-				fmt.Println("sleeping for 15s to avoid JOIN rate limit")
-				time.Sleep(15 * time.Second)
-				numJoined = 0
-			}
-		}
-	})
-
-	con.AddCallback("JOIN", func(e *irc.Event) {
-		fmt.Printf("Joined stream chat for %s\n", e.Arguments[0])
-	})
-
-	con.AddCallback("PRIVMSG", func(e *irc.Event) {
-		//con.Privmsg(roomName, e.Message())
-		//fmt.Printf("%s %s:%s: %s\n", time.Now(), e.Arguments[0], e.User, e.Message())
-		message := Message{User: e.User, Message: e.Message(), Timestamp: time.Now().UTC(), Channel: e.Arguments[0]}
-		_, err := client.Index().Index("twitch").Type("message").BodyJson(message).Do(ctx)
-		if err != nil {
-			panic(err)
-		}
-		//fmt.Printf("Indexed message %s to index %s, type %s\n", put.Id, put.Index, put.Type)
-	})
-
-	flush := func() { // Periodically flush chat messages, may be some race condition with the callback?
-		_, err = client.Flush().Index("twitch").Do(ctx)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	// Flush to elasticsearch every 5 seconds
-	stop := schedule(flush, 5*time.Second)
-	con.Loop()
-	stop <- true
+	<-quitChan
 }
