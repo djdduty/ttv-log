@@ -25,12 +25,12 @@ func StartGoIRC(messageChan chan Message, quitChan chan bool, username string, p
 				conn.Join(fmt.Sprintf("#%s", streamName))
 				fmt.Printf("Sent JOIN for %s\n", streamName)
 				numJoined = numJoined + 1
-				if numJoined >= 50 {
-					numJoined = 0
-					fmt.Println("Sleeping for 15s to avoid JOIN rate limit")
+				if numJoined%50 == 0 {
+					fmt.Printf("Sleeping for 15s to avoid JOIN rate limit Joined %d / %d\n", numJoined, len(streams))
 					time.Sleep(15 * time.Second)
 				}
 			}
+			fmt.Printf("Joined all %d stream channels (input: %d)\n", numJoined, len(streams))
 		}()
 	})
 
