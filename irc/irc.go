@@ -9,7 +9,7 @@ import (
 )
 
 // StartGoIRC ...
-func StartGoIRC(messageChan chan Message, quitChan chan bool, username string, password string) {
+func StartGoIRC(messageChan chan Message, quitChan chan bool, username string, password string, streams []string) {
 	cfg := irc.NewConfig(username)
 	cfg.Pass = password
 	cfg.SSL = true
@@ -21,7 +21,7 @@ func StartGoIRC(messageChan chan Message, quitChan chan bool, username string, p
 	c.HandleFunc(irc.CONNECTED, func(conn *irc.Conn, line *irc.Line) {
 		go func() {
 			numJoined := 0
-			for _, streamName := range Streamers {
+			for _, streamName := range streams {
 				conn.Join(fmt.Sprintf("#%s", streamName))
 				fmt.Printf("Sent JOIN for %s\n", streamName)
 				numJoined = numJoined + 1
