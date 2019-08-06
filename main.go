@@ -264,7 +264,6 @@ func main() {
 	})
 
 	con.AddCallback("JOIN", func(e *irc.Event) {
-		//con.Privmsg(roomName, "Hello! I am a friendly IRC bot who will echo everything you say.")
 		fmt.Printf("Joined stream chat for %s\n", e.Arguments[0])
 	})
 
