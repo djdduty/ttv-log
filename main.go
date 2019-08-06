@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/olivere/elastic/v7"
@@ -237,8 +238,9 @@ func main() {
 		}
 	}
 
-	con := irc.IRC("ttvlogger", "ttvlogger")
-	con.Password = "oauth:hardcodedbutshouldbeenvvariable"
+	username := os.Getenv("TTV_USERNAME")
+	con := irc.IRC(username, username)
+	con.Password = os.Getenv("TTV_PASSWORD")
 	err = con.Connect("irc.chat.twitch.tv:6667")
 
 	if err != nil {
@@ -247,9 +249,17 @@ func main() {
 	}
 
 	con.AddCallback("001", func(e *irc.Event) {
+		numJoined := 0
 		for _, streamName := range streamers {
 			con.Join(fmt.Sprintf("#%s", streamName))
+			numJoined = numJoined + 1
 			fmt.Printf("Sent choin for stream chat for %s\n", streamName)
+			// Abide by join rate limit
+			if numJoined >= 50 {
+				fmt.Println("sleeping for 15s to avoid JOIN rate limit")
+				time.Sleep(15 * time.Second)
+				numJoined = 0
+			}
 		}
 	})
 
@@ -276,7 +286,8 @@ func main() {
 		}
 	}
 
-	stop := schedule(flush, 1000*time.Millisecond)
+	// Flush to elasticsearch every 5 seconds
+	stop := schedule(flush, 5*time.Second)
 	con.Loop()
 	stop <- true
 }

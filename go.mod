@@ -1,4 +1,4 @@
-module github.com/djdduty/twitchlogbot
+module github.com/djdduty/ttv-logbot
 
 go 1.12
 
