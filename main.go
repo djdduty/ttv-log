@@ -238,7 +238,7 @@ func main() {
 	}
 
 	con := irc.IRC("ttvlogger", "ttvlogger")
-	con.Password = "oauth:csllk8fbh7u4xbm12tmzfbesxhz7o5"
+	con.Password = "oauth:hardcodedbutshouldbeenvvariable"
 	err = con.Connect("irc.chat.twitch.tv:6667")
 
 	if err != nil {
