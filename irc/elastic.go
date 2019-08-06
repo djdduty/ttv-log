@@ -35,7 +35,9 @@ const mapping = `
 					"fielddata": true
 				},
 				"Channel":{
-					"type":"text"
+					"type":"text",
+					"store": true,
+					"fielddata": true
 				},
 				"Timestamp":{
 					"type":"date"
@@ -71,7 +73,7 @@ func CreateElasticFlusher(elasticHost string, flushInterval time.Duration) (chan
 	}
 	fmt.Printf("Elasticsearch version %s\n", esversion)
 
-	/* Delete an index.
+	/*/Delete an index.
 	deleteIndex, err := client.DeleteIndex("twitch").Do(ctx)
 	if err != nil {
 		// Handle error
