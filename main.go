@@ -41,11 +41,12 @@ func main() {
 	// Start by getting the top 500 streams currently live, won't come out to exactly 500 thanks to duplicates
 	url := "https://api.twitch.tv/kraken/streams/"
 	httpClient := http.Client{
-		Timeout: time.Second * 2, // Maximum of 2 secs
+		Timeout: time.Second * 30, // Maximum of 2 secs
 	}
-	var streams []string
+	streams := []string{"paymoneywubby", "maiyadanny", "djdduty", "alluux"}
+	numStreams := 1000
 
-	for i := 0; i < 5; i = i + 1 {
+	for i := 0; i < numStreams/100; i = i + 1 {
 		offset := i * 100
 		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s?limit=100&offset=%d", url, offset), nil)
 		if err != nil {
@@ -75,7 +76,6 @@ func main() {
 			streams = AppendIfMissing(streams, stream.Channel.Name)
 		}
 	}
-
 	fmt.Printf("Got list of %d streams\n", len(streams))
 
 	sigs := make(chan os.Signal, 1)
@@ -83,10 +83,7 @@ func main() {
 	//signal.Notify registers the given channel to receive notifications of the specified signals.
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	messageChan, quitChan, err := irc.CreateElasticFlusher(
-		"http://127.0.0.1:9200", // elasticsearch host
-		1*time.Second,           // elasticsearch flush interval
-	)
+	messageChan, quitChan, err := irc.CreateElasticFlusher(1 * time.Second)
 
 	if err != nil {
 		panic(err)
