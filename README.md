@@ -10,3 +10,14 @@ The conductor acts as a watchdog for worker processes for filling out the capaci
 
 ## Worker
 The worker is a simple IRC bot. It will connect to the configured network and join all the channels the conductor tells it to. Using an event-driven IRC client framework it will queue received messages and periodically flush them to an Elasticsearch index.
+
+### Commands
+First, copy `docs/config.yaml` to `./config.yaml` in the working directory of the executable
+
+#### Run the web server, allowing non https access
+
+    ./ttv-log serve --dangerous-force-http
+
+#### Run the irc bot
+
+    ./ttv-log bot

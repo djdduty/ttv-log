@@ -1,12 +1,11 @@
 package irc
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
+	"github.com/djdduty/ttv-log/config"
 	"github.com/olivere/elastic/v7"
 )
 
@@ -18,86 +17,13 @@ type Message struct {
 	Timestamp time.Time
 }
 
-const mapping = `
-{
-	"mappings":{
-		"properties":{
-			"User":{
-				"type":"keyword"
-			},
-			"Message":{
-				"type":"text",
-				"store": true,
-				"fielddata": true
-			},
-			"Channel":{
-				"type":"text",
-				"store": true,
-				"fielddata": true
-			},
-			"Timestamp":{
-				"type":"date"
-			}
-		}
-	}
-}`
-
 // CreateElasticFlusher ...
-func CreateElasticFlusher(flushInterval time.Duration) (chan Message, chan bool, error) {
+func CreateElasticFlusher(connector *config.ElasticConnector, flushInterval time.Duration) (chan Message, chan bool, error) {
 	input := make(chan Message)
 	quit := make(chan bool)
 
-	ctx := context.Background()
-	client, err := elastic.NewSimpleClient(
-		elastic.SetURL(os.Getenv("TTV_ELASTIC_URL")),
-		elastic.SetBasicAuth(os.Getenv("TTV_ELASTIC_USER"), os.Getenv("TTV_ELASTIC_PASS")),
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	info, code, err := client.Ping(os.Getenv("TTV_ELASTIC_URL")).Do(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	fmt.Printf("Elasticsearch returned with code %d and version %s\n", code, info.Version.Number)
-
-	// Getting the ES version number is quite common, so there's a shortcut
-	esversion, err := client.ElasticsearchVersion(os.Getenv("TTV_ELASTIC_URL"))
-	if err != nil {
-		// Handle error
-		return nil, nil, err
-	}
-	fmt.Printf("Elasticsearch version %s\n", esversion)
-
-	// Use the IndexExists service to check if a specified index exists.
-	exists, err := client.IndexExists("twitch").Do(ctx)
-	if err != nil {
-		// Handle error
-		return nil, nil, err
-	}
-	if !exists {
-		// Create a new index.
-		createIndex, err := client.CreateIndex("twitch").Body(mapping).Do(ctx)
-		if err != nil {
-			// Handle error
-			panic(err)
-		}
-		if !createIndex.Acknowledged {
-			// Not acknowledged
-		}
-	} else {
-		//Delete an index.
-		deleteIndex, err := client.DeleteIndex("twitch").Do(ctx)
-		if err != nil {
-			// Handle error
-			panic(err)
-		}
-		if !deleteIndex.Acknowledged {
-			// Not acknowledged
-		}
-	}
+	client := connector.GetClient()
+	ctx := connector.GetContext()
 
 	go func() {
 		bulk := client.Bulk().Index("twitch").Type("message")
@@ -132,7 +58,7 @@ func CreateElasticFlusher(flushInterval time.Duration) (chan Message, chan bool,
 				// Commit the final batch before exiting
 				if bulk.NumberOfActions() > 0 {
 					fmt.Printf("Attempting to flush %d messages\n", bulk.NumberOfActions())
-					_, err = bulk.Do(ctx)
+					_, err := bulk.Do(ctx)
 					if err != nil {
 						panic(err)
 					}

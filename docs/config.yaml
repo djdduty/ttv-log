@@ -1,0 +1,13 @@
+ELASTIC_HOST: http://127.0.0.1:9200
+ELASTIC_USER: elastic
+ELASTIC_PASS: ""
+TWITCH_USER: ttvlogger
+TWITCH_PASS: oauth:someoauthtoken
+TWITCH_CLIENT_ID: someoauthclientid
+LOG_LEVEL: debug
+LOG_FORMAT: json
+STREAM_WHITELIST:
+  - paymoneywubby
+  - djdduty
+  - maiyadanny
+  - alluux
