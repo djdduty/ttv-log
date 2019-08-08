@@ -26,7 +26,7 @@ func CreateElasticFlusher(connector *config.ElasticConnector, flushInterval time
 	ctx := connector.GetContext()
 
 	go func() {
-		bulk := client.Bulk().Index("twitch").Type("message")
+		bulk := client.Bulk().Index("twitch").Type("_doc")
 
 		go func() {
 			for {

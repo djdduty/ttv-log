@@ -127,6 +127,7 @@ func (h *Handler) RegisterRoutes(router *httprouter.Router) {
 	c := h.Config
 	// Setup handlers for all modules
 	newHealthHandler(c, router, h.R)
+	newAPIHandler(c, router, h.R)
 }
 
 // RejectInsecureRequests is a middleware for denying requests that don't fit the secure scheme
