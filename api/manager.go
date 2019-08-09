@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"time"
 
 	"github.com/olivere/elastic/v7"
 )
@@ -16,9 +17,18 @@ type Channel struct {
 
 // Message represents a twitch chat message.
 type Message struct {
-	Message string `json:"Message"`
-	Channel string `json:"Channel"`
-	User    string `json:"User"`
+	ID        string    `json:"Id"`
+	Timestamp time.Time `json:"Timestamp"`
+	Message   string    `json:"Message"`
+	Channel   string    `json:"Channel"`
+	User      string    `json:"User"`
+}
+
+// StreamMessagesResponse represents a stream with all it's messages
+type StreamMessagesResponse struct {
+	ChannelName string `json:"channel_name"`
+	Next        string `json:"next_page"`
+	Messages    []*Message
 }
 
 // Finder specifies a finder for messages.
@@ -167,7 +177,13 @@ func (f *Finder) query(service *elastic.SearchService) *elastic.SearchService {
 // aggs sets up the aggregations in the service.
 func (f *Finder) aggs(service *elastic.SearchService) *elastic.SearchService {
 	// Terms aggregation by channel
-	agg := elastic.NewTermsAggregation().Field("Channel.keyword").Size(1000)
+	agg := elastic.NewTermsAggregation().Field("Channel.keyword")
+	/*if f.from > 0 {
+		agg = agg.From(f.from)
+	}
+	if f.size > 0 {
+		agg = agg.Size(f.size)
+	}*/
 	service = service.Aggregation("channels", agg)
 
 	/*/ Add a terms aggregation of Year, and add a sub-aggregation for Genre

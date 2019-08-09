@@ -58,12 +58,12 @@ func setup(c *config.Config, cmd *cobra.Command, args []string) (handler *Handle
 	router = httprouter.New()
 
 	w := render.New(render.Options{
-		Funcs: []template.FuncMap{
+		/*Funcs: []template.FuncMap{
 			template.FuncMap{"noescape": noescape},
 			//template.FuncMap{"getScopeDescription": consent.GetScopeDescription},
 			template.FuncMap{"eq": func(a, b interface{}) bool { return a == b }},
 		},
-		Layout: "layout",
+		Layout: "layout",*/
 	})
 
 	handler = NewHandler(c, w)
@@ -93,7 +93,7 @@ func setup(c *config.Config, cmd *cobra.Command, args []string) (handler *Handle
 	recovery := negroni.NewRecovery()
 	recovery.PrintStack = false
 
-	static := negroni.NewStatic(http.Dir("www/static"))
+	static := negroni.NewStatic(http.Dir("client/build"))
 	static.Prefix = "/static"
 
 	middlewares = append(

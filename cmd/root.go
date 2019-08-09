@@ -49,7 +49,7 @@ func initConfig() {
 	viper.SetDefault("HOST", "0.0.0.0")
 
 	viper.BindEnv("PORT")
-	viper.SetDefault("PORT", 3000)
+	viper.SetDefault("PORT", 3001)
 
 	viper.BindEnv("LOG_LEVEL")
 	viper.SetDefault("LOG_LEVEL", "info")
